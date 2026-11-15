@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useCurrentFrame, useVideoConfig } from "remotion";
-import { Box, Cyl, Ground, Sign } from "../engine/kit";
+import { Box, Cyl, Ground } from "../engine/kit";
 import { painted, planks, rng } from "../engine/tex";
 import type { Look, V3 } from "../engine/Stage";
 
@@ -192,7 +192,29 @@ export const Office: React.FC<{ screens?: [ScreenKind, ScreenKind, ScreenKind]; 
   );
 };
 
-// wall signs used in the jokes (kept to short lines so the text fits)
-export const BrainSign: React.FC = () => <Sign lines={["BRAIN", "FOR RENT", "LANDLORD", "OFFLINE"]} pos={[-6.2, 3.7, -5.92]} w={2.6} h={1.5} bg="#1a1a2a" fg="#ffd27a" />;
-export const SurvivedSign: React.FC = () => <Sign lines={["ICE AGES", "PLAGUES", "DIAL-UP", "SURVIVED"]} pos={[6.8, 3.7, -5.92]} w={2.2} h={1.35} bg="#1a2a22" fg="#9fffc8" />;
-export const LogoSign: React.FC = () => <Sign lines={["GOODCHAOS"]} pos={[0, 5.2, -5.8]} w={5} h={1.0} bg="#1a1a2a" fg="#ff5a6a" />;
+// Glowing wall signs (self-lit so the text stays readable in the dark office)
+const NeonSign: React.FC<{ lines: string[]; pos: V3; w: number; h: number; color: string; bg?: string }> = ({ lines, pos, w, h, color, bg = "#14122a" }) => {
+  const tex = useMemo(() => {
+    const W = 1024, H = Math.round((1024 * h) / w);
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d")!;
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.strokeStyle = color; g.lineWidth = 14; g.strokeRect(20, 20, W - 40, H - 40);
+    g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = color;
+    let fs = Math.min(150, ((H - 90) / lines.length) * 0.82);
+    g.font = `900 ${fs}px Arial`;
+    const widest = Math.max(...lines.map((l) => g.measureText(l).width));
+    if (widest > W - 120) { fs = (fs * (W - 120)) / widest; g.font = `900 ${fs}px Arial`; }
+    g.shadowColor = color; g.shadowBlur = 24;
+    lines.forEach((l, i) => g.fillText(l, W / 2, H / 2 + (i - (lines.length - 1) / 2) * fs * 1.18));
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  }, [lines.join("|"), color, bg, w, h]);
+  return (
+    <mesh position={pos}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial map={tex} fog={false} />
+    </mesh>
+  );
+};
+export const BrainSign: React.FC = () => <NeonSign lines={["BRAIN", "FOR RENT", "LANDLORD", "OFFLINE"]} pos={[-6.2, 3.7, -5.9]} w={2.6} h={1.7} color="#ffd27a" />;
+export const SurvivedSign: React.FC = () => <NeonSign lines={["ICE AGES", "PLAGUES", "DIAL-UP", "SURVIVED"]} pos={[6.8, 3.7, -5.9]} w={2.4} h={1.6} color="#9fffc8" bg="#0f2018" />;
+export const LogoSign: React.FC = () => <NeonSign lines={["GOODCHAOS"]} pos={[0, 5.0, -5.8]} w={5} h={1.1} color="#ff6a7a" />;
